@@ -1,0 +1,60 @@
+ssh cloud_user@54.165.147.98
+]h1R6t_P
+cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+EOF
+
+sudo sysctl --system
+
+sudo apt-get update && sudo apt-get install -y containerd
+
+
+sudo mkdir -p /etc/containerd
+sudo containerd config default | sudo tee /etc/containerd.config.toml
+
+sudo systemctl restart containerd
+sudo systemctl status containerd
+
+sudo swapoff -a
+sudo apt-get update && sudo apt-get install -y apt-transport-https curl
+
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.27/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.27/deb/ /
+EOF
+
+sudo apt-get update
+
+sudo apt-get install -y kubelet kubeadm kubectl
+
+sudo apt-mark hold kubelet kubeadm kubectl
+
+ssh cloud_user@54.172.136.110
+ssh cloud_user@52.91.77.220
+]h1R6t_P
+
+sudo kubeadm init --pod-network-cidr 192.168.0.0/16 --kubernetes-version 1.27.11
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+kubectl get nodes
+
+kubeadm token create --print-join-command
+
+sudo kubeadm join 10.0.1.101:6443 --token l72wr0.ke2g07itxz6dmn6r --discovery-token-ca-cert-hash sha256:404942e9301cd2b571379d4462b3673ef078be01a073ca924c794c947e639f6a 
